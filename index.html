@@ -3,75 +3,75 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Buddy Picker · FIN-JOD Style (JSONP)</title>
+  <title>Buddy Picker · Sites/GitHub Ready</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
       --bg-from:#f8fafc; --bg-to:#f1f5f9; --card:#fff; --line:#e5e7eb;
       --text:#0f172a; --muted:#64748b; --primary:#1a1a1a; --accent:#6366f1;
+      --success:#10b981; --error:#ef4444;
     }
     body{ font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; background:linear-gradient(160deg,var(--bg-from),var(--bg-to)); }
     .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 30px rgba(2,6,23,.06) }
-    .btn{ border-radius:12px; padding:.9rem 1.1rem; font-weight:600 }
-    .btn-primary{ background:#1a1a1a; color:#fff } .btn-primary:hover{ background:#2a2a2a }
+    .btn{ border-radius:12px; padding:.9rem 1.1rem; font-weight:600; transition:.2s }
     .btn-accent{ background:var(--accent); color:#fff } .btn-accent:hover{ filter:brightness(1.05) }
+    .btn:disabled{ opacity:.6; cursor:not-allowed }
     .input{ border:1px solid var(--line); border-radius:12px; padding:.9rem 1rem; outline:none; width:100% }
     .input:focus{ box-shadow:0 0 0 4px rgba(99,102,241,.15); border-color:#c7d2fe }
     .toast{ position:fixed; right:16px; top:16px; background:#111827; color:#fff; padding:.75rem 1rem; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); transform:translateY(-10px); opacity:0; transition:.25s }
     .toast.show{ opacity:1; transform:translateY(0) }
-    .kpi{ border:1px solid var(--line); border-radius:14px; padding:1rem }
+    .badge{ font-size:.8rem; padding:.25rem .6rem; border-radius:999px; background:#eef2ff; color:#334155; border:1px solid #e5e7eb }
+
+    /* Loading overlay */
+    .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(15,23,42,.35); backdrop-filter:blur(3px); z-index:50 }
+    .overlay.show{ display:flex }
+    .spinner{ width:42px; height:42px; border:3px solid #e5e7eb; border-top-color:#6366f1; border-radius:50%; animation:spin 1s linear infinite }
+    @keyframes spin{ to{ transform:rotate(360deg) } }
   </style>
 </head>
 <body class="min-h-screen">
   <header class="sticky top-0 z-10 backdrop-blur bg-white/70 border-b border-slate-200">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
       <div class="font-bold text-lg">Buddy Picker</div>
-      <nav class="flex gap-2">
-        <button id="tabLogin" class="px-3 py-1.5 rounded-full bg-slate-900 text-white">ล็อกอิน</button>
-        <button id="tabDraw"  class="px-3 py-1.5 rounded-full hover:bg-slate-100">หา Buddy</button>
-      </nav>
+      <div class="flex items-center gap-2 text-sm text-slate-600">
+        <span id="roundBadge" class="badge">Round: —</span>
+        <span id="lastFetch" class="badge">Last fetch: —</span>
+      </div>
     </div>
   </header>
 
   <main class="max-w-3xl mx-auto px-4 py-6">
-    <!-- Login -->
-    <section id="viewLogin" class="card p-6">
-      <h1 class="text-xl font-semibold mb-1">เข้าสู่ระบบ</h1>
-      <p class="text-slate-500 mb-5">เลือกชื่อจากรายชื่อ และกรอกรหัสพนักงาน (ใช้เป็นรหัสผ่าน)</p>
+    <!-- Inputs -->
+    <section class="card p-6">
+      <h1 class="text-xl font-semibold mb-1">หา Buddy</h1>
+      <p class="text-slate-500 mb-5">เลือกชื่อจากรายชื่อ และกรอกรหัสพนักงาน (ใช้เป็นรหัสผ่าน) แล้วกดปุ่ม “หา Buddy” ได้เลย</p>
 
       <div class="grid gap-4">
         <div>
-          <label class="block text-sm text-slate-600 mb-1">เลือกชื่อ (Name)</label>
+          <div class="flex items-center justify-between">
+            <label class="block text-sm text-slate-600 mb-1">เลือกชื่อ (Name)</label>
+            <button id="btnReloadUsers" class="text-sm underline decoration-dotted">Reload รายชื่อ</button>
+          </div>
           <select id="selName" class="input"></select>
           <div class="text-xs text-slate-500 mt-1" id="userCount">—</div>
         </div>
         <div>
           <label class="block text-sm text-slate-600 mb-1">รหัสพนักงาน (EmpID)</label>
-          <input id="inpEmp" class="input" placeholder="เช่น 1001"/>
+          <input id="inpEmp" class="input" placeholder="เช่น 1001" inputmode="numeric" autocomplete="off"/>
         </div>
       </div>
 
       <div class="mt-5 flex items-center gap-2">
-        <button id="btnLogin" class="btn btn-primary">ล็อกอิน</button>
         <label class="flex items-center gap-2 text-sm text-slate-600">
           <input id="remember" type="checkbox" class="w-4 h-4"> จำฉันไว้
         </label>
+        <div id="loginStatus" class="text-sm text-slate-600 ml-auto"></div>
       </div>
 
-      <div class="mt-6 grid grid-cols-2 gap-3">
-        <div class="kpi"><div class="text-xs text-slate-500">สถานะ</div><div id="kpiStatus" class="text-base font-semibold">ยังไม่ได้ล็อกอิน</div></div>
-        <div class="kpi"><div class="text-xs text-slate-500">รอบกิจกรรม</div><div id="kpiRound" class="text-base font-semibold">—</div></div>
-      </div>
-    </section>
-
-    <!-- Draw -->
-    <section id="viewDraw" class="card p-6 mt-6 hidden">
-      <h2 class="text-xl font-semibold mb-1">หา Buddy</h2>
-      <p class="text-slate-500 mb-5">กดปุ่มเพื่อสุ่ม (ห้ามซ้ำ, ไม่ใช่ตัวเอง, หนึ่งครั้งต่อรอบ)</p>
-      <div class="flex items-center gap-3">
-        <button id="btnDraw" class="btn btn-accent">หา Buddy</button>
-        <div id="drawHint" class="text-sm text-slate-600"></div>
+      <div class="mt-5">
+        <button id="btnFind" class="btn btn-accent w-full">หา Buddy</button>
+        <div id="drawHint" class="text-sm text-slate-600 mt-2"></div>
       </div>
 
       <div id="result" class="mt-6 hidden">
@@ -85,55 +85,59 @@
 
   <div id="toast" class="toast"></div>
 
+  <!-- Loading overlay -->
+  <div id="overlay" class="overlay">
+    <div class="card p-5 flex items-center gap-3">
+      <div class="spinner"></div>
+      <div class="text-slate-700 font-medium" id="overlayMsg">กำลังโหลด…</div>
+    </div>
+  </div>
+
   <script>
-    // ===== CONFIG =====
-    const WEB_APP_URL = "https://script.google.com/macros/library/d/1dMqSfrcliBeuXYNHg7EzDR5qaIqfmF2qFgEMD9SAl2nwFe5GzCkUK0TJ/2"; // ลงท้ายด้วย /exec
-    // ==================
+    /* ===== CONFIG ===== */
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxoE8n8ZiTJu_dDnSHmn6mjOF27z-XEvQpPHVIgyjKG2R00hPHHjFkN7JHCz6XzdFjWPA/exec"; // /exec ของ deployment ล่าสุด
+    /* ================== */
 
-    // JSONP helper: คืน Promise ที่ resolve เมื่อ callback ถูกเรียก
-    function jsonp(op, params={}, cbName){
+    // JSONP helper (cache-busting + retry)
+    function jsonp(op, params={}, {timeout=15000, retries=1} = {}){
       return new Promise((resolve, reject)=>{
-        const callback = cbName || ("cb_" + Math.random().toString(36).slice(2));
-        const url = new URL(WEB_APP_URL);
-        url.searchParams.set("op", op);
-        url.searchParams.set("callback", callback);
-        Object.entries(params).forEach(([k,v])=> url.searchParams.set(k, v));
+        const tryOnce = ()=>{
+          const callback = "cb_" + Math.random().toString(36).slice(2);
+          const url = new URL(WEB_APP_URL);
+          url.searchParams.set("op", op);
+          url.searchParams.set("callback", callback);
+          url.searchParams.set("nocache", Date.now());
+          Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
 
-        const s = document.createElement("script");
-        s.src = url.toString();
-        s.async = true;
+          const s = document.createElement("script");
+          s.src = url.toString();
+          s.async = true;
 
-        const timer = setTimeout(()=>{
-          window[callback] && delete window[callback];
-          s.remove();
-          reject(new Error("JSONP timeout"));
-        }, 15000);
+          const timer = setTimeout(()=>{ cleanup(); onErr(new Error("JSONP timeout")); }, timeout);
+          function cleanup(){ clearTimeout(timer); try{ delete window[callback]; }catch(e){} s.remove(); }
+          function onErr(err){ if (retries>0){ retries-=1; setTimeout(()=>tryOnce(), 400); } else { reject(err); } }
 
-        window[callback] = (data)=>{
-          clearTimeout(timer);
-          resolve(data);
-          try{ delete window[callback]; }catch(e){}
-          s.remove();
+          window[callback] = (data)=>{ cleanup(); resolve(data); };
+          s.onerror = ()=>{ cleanup(); onErr(new Error("JSONP error")); };
+          document.body.appendChild(s);
         };
-
-        s.onerror = ()=>{ clearTimeout(timer); reject(new Error("JSONP error")); s.remove(); };
-        document.body.appendChild(s);
+        tryOnce();
       });
     }
 
-    // UI helpers
+    // UI refs
     const $ = (s)=>document.querySelector(s);
-    const viewLogin=$("#viewLogin"), viewDraw=$("#viewDraw");
-    const tabLogin=$("#tabLogin"), tabDraw=$("#tabDraw");
-    const selName=$("#selName"), inpEmp=$("#inpEmp");
-    const remember=$("#remember"), btnLogin=$("#btnLogin"), btnDraw=$("#btnDraw");
-    const kpiStatus=$("#kpiStatus"), kpiRound=$("#kpiRound");
-    const resultBox=$("#result"), buddyName=$("#buddyName"), buddyEmp=$("#buddyEmp"), drawHint=$("#drawHint");
-    const toastBox=$("#toast"), userCount=$("#userCount");
+    const selName=$("#selName"), inpEmp=$("#inpEmp"), remember=$("#remember");
+    const btnFind=$("#btnFind"), btnReloadUsers=$("#btnReloadUsers");
+    const loginStatus=$("#loginStatus"), userCount=$("#userCount");
+    const buddyName=$("#buddyName"), buddyEmp=$("#buddyEmp"), resultBox=$("#result"), drawHint=$("#drawHint");
+    const roundBadge=$("#roundBadge"), lastFetch=$("#lastFetch");
+    const overlay=$("#overlay"), overlayMsg=$("#overlayMsg"), toastBox=$("#toast");
 
-    function toast(msg, ok=true){ toastBox.textContent=msg; toastBox.style.background= ok?"#111827":"#b91c1c"; toastBox.classList.add("show"); setTimeout(()=>toastBox.classList.remove("show"), 2000); }
-    function switchTab(t){ if(t==="login"){ viewLogin.classList.remove("hidden"); viewDraw.classList.add("hidden"); tabLogin.classList.add("bg-slate-900","text-white"); tabDraw.classList.remove("bg-slate-900","text-white"); } else { viewLogin.classList.add("hidden"); viewDraw.classList.remove("hidden"); tabDraw.classList.add("bg-slate-900","text-white"); tabLogin.classList.remove("bg-slate-900","text-white"); } }
-    tabLogin.onclick=()=>switchTab("login"); tabDraw.onclick=()=>switchTab("draw");
+    function toast(msg, ok=true){ toastBox.textContent=msg; toastBox.style.background= ok?"#111827":"#ef4444"; toastBox.classList.add("show"); setTimeout(()=>toastBox.classList.remove("show"), 2200); }
+    function stamp(){ lastFetch.textContent = "Last fetch: " + new Date().toLocaleString(); }
+    function showLoading(msg="กำลังโหลด…"){ overlayMsg.textContent=msg; overlay.classList.add("show"); }
+    function hideLoading(){ overlay.classList.remove("show"); }
 
     function saveLocal(){
       if (!remember.checked) return;
@@ -146,86 +150,98 @@
       const sel = localStorage.getItem("bp_sel");
       if (sel && selName.options.length) selName.value = sel;
     }
-
-    function fillUsers(users){
-      selName.innerHTML = "";
-      const opt0 = document.createElement("option");
-      opt0.value=""; opt0.textContent="— เลือกชื่อ —";
-      selName.appendChild(opt0);
-
-      users.forEach(u=>{
-        const o = document.createElement("option");
-        o.value = `${u.empId}:::${u.name}`;
-        o.textContent = u.name ? `${u.name} (${u.empId})` : u.empId;
-        selName.appendChild(o);
-      });
-      userCount.textContent = `รายชื่อทั้งหมด: ${users.length} คน`;
-      loadLocal();
-    }
-
     function parseSelected(){
       const v = selName.value;
       if (!v) return null;
       const [empId, name] = v.split(":::");
       return { empId, name };
     }
-
+    function fillUsers(users, round){
+      selName.innerHTML="";
+      const o0=document.createElement("option");
+      o0.value=""; o0.textContent="— เลือกชื่อ —";
+      selName.appendChild(o0);
+      users.forEach(u=>{
+        const o=document.createElement("option");
+        o.value = `${u.empId}:::${u.name}`;
+        o.textContent = u.name ? u.name : u.empId;  // โชว์ชื่อเท่านั้น
+        selName.appendChild(o);
+      });
+      userCount.textContent = `รายชื่อทั้งหมด: ${users.length} คน`;
+      if (round) roundBadge.textContent = `Round: ${round}`;
+      loadLocal();
+      stamp();
+    }
     function showBuddy(name, emp){
       buddyName.textContent = name || "—";
       buddyEmp.textContent  = emp ? `EmpID: ${emp}` : "—";
       resultBox.classList.remove("hidden");
     }
 
-    // Events
-    btnLogin.onclick = async ()=>{
+    async function loadUsers(){
+      try{
+        showLoading("กำลังโหลดรายชื่อ…");
+        const data = await jsonp("listUsers", {}, {retries:2});
+        if (data.ok){ fillUsers(data.users||[], data.round); }
+        else { fillUsers([], "—"); toast("โหลดรายชื่อไม่สำเร็จ", false); }
+      } catch(e){ console.error(e); toast("เชื่อมต่อไม่ได้", false); }
+      finally{ hideLoading(); }
+    }
+
+    // รวม flow: login -> (show assigned or draw) ในปุ่มเดียว
+    btnFind.onclick = async ()=>{
       const selected = parseSelected();
-      if (!selected) { toast("กรุณาเลือกชื่อ", false); return; }
+      if (!selected){ toast("กรุณาเลือกชื่อ", false); return; }
       const emp = inpEmp.value.trim();
       if (!emp) { toast("กรอกรหัสพนักงาน", false); return; }
-      if (emp !== selected.empId) { toast("รหัสพนักงานไม่ตรงกับชื่อที่เลือก", false); return; }
+      if (emp !== selected.empId){ toast("รหัสพนักงานไม่ตรงกับชื่อที่เลือก", false); return; }
 
+      btnFind.disabled = true;
       try{
-        const data = await jsonp("login", { name:selected.name, empId:emp });
-        if (data.ok){
-          kpiStatus.textContent = `ล็อกอิน: ${data.user.name} (${data.user.empId})`;
-          kpiRound.textContent  = data.round || "—";
-          saveLocal();
-          switchTab("draw");
-          if (data.assigned){ showBuddy(data.assigned.buddyName, data.assigned.buddyEmpId); drawHint.textContent="คุณจับได้แล้วในรอบนี้"; }
-          else { resultBox.classList.add("hidden"); drawHint.textContent="ยังไม่ได้จับในรอบนี้"; }
-          toast("ล็อกอินสำเร็จ");
-        } else {
-          toast(data.error || "ล็อกอินล้มเหลว", false);
+        showLoading("กำลังตรวจสอบข้อมูล…");
+        // 1) login
+        const loginRes = await jsonp("login", { name:selected.name, empId: emp }, {retries:1});
+        stamp();
+        if (!loginRes.ok){ toast(loginRes.error || "ล็อกอินล้มเหลว", false); return; }
+
+        loginStatus.textContent = `ล็อกอิน: ${loginRes.user.name} (${loginRes.user.empId}) · Round ${loginRes.round||"—"}`;
+        saveLocal();
+
+        // 2) ถ้าเคยมีผลแล้ว แสดงเลย
+        if (loginRes.assigned){
+          hideLoading();
+          showBuddy(loginRes.assigned.buddyName, loginRes.assigned.buddyEmpId);
+          drawHint.textContent = "คุณจับได้แล้วในรอบนี้";
+          toast("ดึงผลเดิม", true);
+          return;
         }
-      } catch(err){ console.error(err); toast("เชื่อมต่อไม่ได้", false); }
-    };
 
-    btnDraw.onclick = async ()=>{
-      const selected = parseSelected();
-      if (!selected) { toast("กรุณาเลือกชื่อและล็อกอินก่อน", false); return; }
-      btnDraw.disabled = true; btnDraw.textContent = "กำลังจับ…";
-      try{
-        const data = await jsonp("drawBuddy", { empId: selected.empId });
-        if (data.ok && data.assigned){
-          showBuddy(data.assigned.buddyName, data.assigned.buddyEmpId);
-          drawHint.textContent = data.fromCache ? "คุณจับได้แล้วในรอบนี้" : "สุ่มสำเร็จ!";
-          toast(data.fromCache ? "ดึงผลเดิม" : "ได้ Buddy แล้ว 🎉");
+        // 3) ยังไม่เคย -> สุ่ม
+        overlayMsg.textContent = "กำลังสุ่มหา Buddy…";
+        const drawRes = await jsonp("drawBuddy", { empId: selected.empId }, {retries:1});
+        stamp();
+        if (drawRes.ok && drawRes.assigned){
+          showBuddy(drawRes.assigned.buddyName, drawRes.assigned.buddyEmpId);
+          drawHint.textContent = "สุ่มสำเร็จ!";
+          toast("ได้ Buddy แล้ว 🎉");
         } else {
-          const msg = data.error==="NO_CANDIDATE_LEFT" ? "ไม่มีผู้ว่างเหลือให้จับแล้ว" : (data.error||"จับไม่สำเร็จ");
+          const msg = drawRes.error==="NO_CANDIDATE_LEFT" ? "ไม่มีผู้ว่างเหลือให้จับแล้ว" : (drawRes.error||"จับไม่สำเร็จ");
           toast(msg, false);
         }
-      } catch(err){ console.error(err); toast("เชื่อมต่อไม่ได้", false); }
-      finally { btnDraw.disabled=false; btnDraw.textContent="หา Buddy"; }
+      } catch(err){
+        console.error(err);
+        toast("เชื่อมต่อไม่ได้", false);
+      } finally{
+        hideLoading();
+        btnFind.disabled = false;
+      }
     };
 
+    // Events
+    btnReloadUsers.onclick = loadUsers;
+
     // Init
-    (async function init(){
-      try{
-        const data = await jsonp("listUsers");
-        if (data.ok){ fillUsers(data.users||[]); }
-        else { fillUsers([]); toast("โหลดรายชื่อไม่สำเร็จ", false); }
-      } catch(e){ console.error(e); toast("เชื่อมต่อไม่ได้", false); }
-    })();
+    loadUsers(); // preload รายชื่อ + อัปเดตรอบ
   </script>
 </body>
 </html>
