@@ -19,24 +19,23 @@
     .btn-primary{ background:var(--accent); color:#fff } .btn-primary:hover{ filter:brightness(1.05) }
     .btn-ghost{ background:#fff; border:1px solid var(--line); color:#0f172a }
     .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none!important }
-    .input{ border:1px solid var(--line); border-radius:14px; padding:0.9rem 1rem; outline:none; width:100%; font-size:16px; /* กัน iOS zoom */ }
+    .input{ border:1px solid var(--line); border-radius:14px; padding:0.9rem 1rem; outline:none; width:100%; font-size:16px; }
     .input:focus{ box-shadow:0 0 0 5px rgba(99,102,241,.15); border-color:#c7d2fe }
     .label{ font-size:14px; color:#334155; font-weight:600 }
     .hint{ font-size:13px; color:#64748b }
     .toast{ position:fixed; right:16px; top:16px; background:#111827; color:#fff; padding:.8rem 1rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.15); transform:translateY(-10px); opacity:0; transition:.25s; z-index:60 }
     .toast.show{ opacity:1; transform:translateY(0) }
 
-    /* Loading overlay (mobile-friendly) */
+    /* Loading overlay */
     .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(15,23,42,.35); backdrop-filter:blur(3px); z-index:50; padding:24px }
     .overlay.show{ display:flex }
     .spinner{ width:44px; height:44px; border:3px solid #e5e7eb; border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite }
     @keyframes spin{ to{ transform:rotate(360deg) } }
 
-    /* Buddy card (mobile) */
+    /* Buddy card */
     .buddy-card{ display:flex; align-items:center; gap:14px; padding:14px; border:1px solid var(--line); border-radius:16px; background:#fff }
     .avatar{ width:48px; height:48px; border-radius:999px; display:grid; place-items:center; font-weight:800; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-2)) }
 
-    /* Safe area bottom padding */
     .safe-bottom{ padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
   </style>
 </head>
@@ -72,16 +71,13 @@
         </label>
       </div>
 
-      <!-- Primary CTA -->
       <div class="mt-4">
         <button id="btnFind" class="btn btn-primary w-full text-[16px]">หา Buddy</button>
         <div id="drawHint" class="hint mt-2"></div>
       </div>
 
-      <!-- Status line (compact for mobile) -->
       <div id="loginStatus" class="hint mt-3"></div>
 
-      <!-- Result -->
       <div id="result" class="mt-5 hidden">
         <div class="hint mb-2">Your Buddy</div>
         <div class="buddy-card">
@@ -100,7 +96,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- Loading overlay -->
   <div id="overlay" class="overlay">
     <div class="card p-5 flex items-center gap-3 w-full max-w-[320px]">
       <div class="spinner"></div>
@@ -110,10 +105,9 @@
 
   <script>
     /* ===== CONFIG ===== */
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxoE8n8ZiTJu_dDnSHmn6mjOF27z-XEvQpPHVIgyjKG2R00hPHHjFkN7JHCz6XzdFjWPA/exec"; // /exec ของ deployment ล่าสุด
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxoE8n8ZiTJu_dDnSHmn6mjOF27z-XEvQpPHVIgyjKG2R00hPHHjFkN7JHCz6XzdFjWPA/exec";
     /* ================== */
 
-    // JSONP helper (cache-busting + retry)
     function jsonp(op, params={}, {timeout=15000, retries=1} = {}){
       return new Promise((resolve, reject)=>{
         const tryOnce = ()=>{
@@ -150,7 +144,6 @@
     const overlay=$("#overlay"), overlayMsg=$("#overlayMsg"), toastBox=$("#toast");
     const buddyAvatar=$("#buddyAvatar");
 
-    // Helpers
     function toast(msg, ok=true){ toastBox.textContent=msg; toastBox.style.background= ok?"#111827":"#ef4444"; toastBox.classList.add("show"); setTimeout(()=>toastBox.classList.remove("show"), 2000); }
     function stamp(){ lastFetch.textContent = "Last fetch: " + new Date().toLocaleString(); }
     function showLoading(msg="กำลังโหลด…"){ overlayMsg.textContent=msg; overlay.classList.add("show"); }
@@ -207,12 +200,25 @@
       finally{ hideLoading(); }
     }
 
-    // รวม flow: login -> (show assigned or draw) ในปุ่มเดียว
+    // ป้องกันล็อกอินด้วย EmpID มั่ว:
+    // - ต้องเลือกชื่อ และ EmpID ที่กรอกต้อง "ตรงกับ EmpID ของชื่อที่เลือก" เท่านั้น
+    // - (ทางเลือก) บังคับให้เป็นตัวเลขล้วน ๆ
+    function validateEmpId(selected, emp){
+      if (!selected) { toast("กรุณาเลือกชื่อ", false); selName.focus(); return false; }
+      if (!emp) { toast("กรอกรหัสพนักงาน", false); inpEmp.focus(); return false; }
+      // ถ้าองค์กรคุณใช้เฉพาะตัวเลข ให้เปิดการตรวจนี้
+      if (!/^\d+$/.test(emp)) { toast("รหัสพนักงานต้องเป็นตัวเลข", false); inpEmp.focus(); return false; }
+      if (emp !== selected.empId) { toast("รหัสพนักงานไม่ตรงกับชื่อที่เลือก", false); inpEmp.focus(); return false; }
+      return true;
+    }
+
+    // Flow: login -> (show assigned or draw) ในปุ่มเดียว
     btnFind.onclick = async ()=>{
       const selected = parseSelected();
-      if (!selected){ toast("กรุณาเลือกชื่อ", false); selName.focus(); return; }
       const emp = inpEmp.value.trim();
-      if (!emp) { toast("กรอกรหัสพนักงาน", false); inpEmp.focus(); return; }
+
+      // ✅ ตรวจ EmpID อย่างเข้มก่อนเรียก API
+      if (!validateEmpId(selected, emp)) return;
 
       btnFind.disabled = true;
       try{
@@ -224,7 +230,6 @@
         loginStatus.textContent = `ล็อกอิน: ${loginRes.user.name} (${loginRes.user.empId}) · รอบ ${loginRes.round||"—"}`;
         saveLocal();
 
-        // เคยจับแล้ว → โชว์ผลเดิม
         if (loginRes.assigned){
           hideLoading();
           showBuddy(loginRes.assigned.buddyName, loginRes.assigned.buddyEmpId);
@@ -233,7 +238,6 @@
           return;
         }
 
-        // ยังไม่เคย → สุ่มใหม่
         overlayMsg.textContent = "กำลังสุ่มหา Buddy…";
         const drawRes = await jsonp("drawBuddy", { empId: selected.empId }, {retries:1});
         stamp();
@@ -254,10 +258,8 @@
       }
     };
 
-    // Reload รายชื่อ
     btnReloadUsers.onclick = loadUsers;
 
-    // Init
     loadUsers();
   </script>
 </body>
