@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Buddy Picker · FIN-JOD Style (JSONP)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg-from:#f8fafc; --bg-to:#f1f5f9; --card:#fff; --line:#e5e7eb;
+      --text:#0f172a; --muted:#64748b; --primary:#1a1a1a; --accent:#6366f1;
+    }
+    body{ font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; background:linear-gradient(160deg,var(--bg-from),var(--bg-to)); }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 30px rgba(2,6,23,.06) }
+    .btn{ border-radius:12px; padding:.9rem 1.1rem; font-weight:600 }
+    .btn-primary{ background:#1a1a1a; color:#fff } .btn-primary:hover{ background:#2a2a2a }
+    .btn-accent{ background:var(--accent); color:#fff } .btn-accent:hover{ filter:brightness(1.05) }
+    .input{ border:1px solid var(--line); border-radius:12px; padding:.9rem 1rem; outline:none; width:100% }
+    .input:focus{ box-shadow:0 0 0 4px rgba(99,102,241,.15); border-color:#c7d2fe }
+    .toast{ position:fixed; right:16px; top:16px; background:#111827; color:#fff; padding:.75rem 1rem; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); transform:translateY(-10px); opacity:0; transition:.25s }
+    .toast.show{ opacity:1; transform:translateY(0) }
+    .kpi{ border:1px solid var(--line); border-radius:14px; padding:1rem }
+  </style>
+</head>
+<body class="min-h-screen">
+  <header class="sticky top-0 z-10 backdrop-blur bg-white/70 border-b border-slate-200">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="font-bold text-lg">Buddy Picker</div>
+      <nav class="flex gap-2">
+        <button id="tabLogin" class="px-3 py-1.5 rounded-full bg-slate-900 text-white">ล็อกอิน</button>
+        <button id="tabDraw"  class="px-3 py-1.5 rounded-full hover:bg-slate-100">หา Buddy</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-6">
+    <!-- Login -->
+    <section id="viewLogin" class="card p-6">
+      <h1 class="text-xl font-semibold mb-1">เข้าสู่ระบบ</h1>
+      <p class="text-slate-500 mb-5">เลือกชื่อจากรายชื่อ และกรอกรหัสพนักงาน (ใช้เป็นรหัสผ่าน)</p>
+
+      <div class="grid gap-4">
+        <div>
+          <label class="block text-sm text-slate-600 mb-1">เลือกชื่อ (Name)</label>
+          <select id="selName" class="input"></select>
+          <div class="text-xs text-slate-500 mt-1" id="userCount">—</div>
+        </div>
+        <div>
+          <label class="block text-sm text-slate-600 mb-1">รหัสพนักงาน (EmpID)</label>
+          <input id="inpEmp" class="input" placeholder="เช่น 1001"/>
+        </div>
+      </div>
+
+      <div class="mt-5 flex items-center gap-2">
+        <button id="btnLogin" class="btn btn-primary">ล็อกอิน</button>
+        <label class="flex items-center gap-2 text-sm text-slate-600">
+          <input id="remember" type="checkbox" class="w-4 h-4"> จำฉันไว้
+        </label>
+      </div>
+
+      <div class="mt-6 grid grid-cols-2 gap-3">
+        <div class="kpi"><div class="text-xs text-slate-500">สถานะ</div><div id="kpiStatus" class="text-base font-semibold">ยังไม่ได้ล็อกอิน</div></div>
+        <div class="kpi"><div class="text-xs text-slate-500">รอบกิจกรรม</div><div id="kpiRound" class="text-base font-semibold">—</div></div>
+      </div>
+    </section>
+
+    <!-- Draw -->
+    <section id="viewDraw" class="card p-6 mt-6 hidden">
+      <h2 class="text-xl font-semibold mb-1">หา Buddy</h2>
+      <p class="text-slate-500 mb-5">กดปุ่มเพื่อสุ่ม (ห้ามซ้ำ, ไม่ใช่ตัวเอง, หนึ่งครั้งต่อรอบ)</p>
+      <div class="flex items-center gap-3">
+        <button id="btnDraw" class="btn btn-accent">หา Buddy</button>
+        <div id="drawHint" class="text-sm text-slate-600"></div>
+      </div>
+
+      <div id="result" class="mt-6 hidden">
+        <div class="text-sm text-slate-500 mb-1">Your Buddy</div>
+        <div class="text-2xl font-bold" id="buddyName">—</div>
+        <div class="text-slate-500" id="buddyEmp">—</div>
+        <div class="mt-4 text-sm text-slate-600">* ถ้าเคยจับได้แล้ว ระบบจะแสดงผลเดิม (ไม่จับใหม่)</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // ===== CONFIG =====
+    const WEB_APP_URL = "https://script.google.com/macros/library/d/1dMqSfrcliBeuXYNHg7EzDR5qaIqfmF2qFgEMD9SAl2nwFe5GzCkUK0TJ/2"; // ลงท้ายด้วย /exec
+    // ==================
+
+    // JSONP helper: คืน Promise ที่ resolve เมื่อ callback ถูกเรียก
+    function jsonp(op, params={}, cbName){
+      return new Promise((resolve, reject)=>{
+        const callback = cbName || ("cb_" + Math.random().toString(36).slice(2));
+        const url = new URL(WEB_APP_URL);
+        url.searchParams.set("op", op);
+        url.searchParams.set("callback", callback);
+        Object.entries(params).forEach(([k,v])=> url.searchParams.set(k, v));
+
+        const s = document.createElement("script");
+        s.src = url.toString();
+        s.async = true;
+
+        const timer = setTimeout(()=>{
+          window[callback] && delete window[callback];
+          s.remove();
+          reject(new Error("JSONP timeout"));
+        }, 15000);
+
+        window[callback] = (data)=>{
+          clearTimeout(timer);
+          resolve(data);
+          try{ delete window[callback]; }catch(e){}
+          s.remove();
+        };
+
+        s.onerror = ()=>{ clearTimeout(timer); reject(new Error("JSONP error")); s.remove(); };
+        document.body.appendChild(s);
+      });
+    }
+
+    // UI helpers
+    const $ = (s)=>document.querySelector(s);
+    const viewLogin=$("#viewLogin"), viewDraw=$("#viewDraw");
+    const tabLogin=$("#tabLogin"), tabDraw=$("#tabDraw");
+    const selName=$("#selName"), inpEmp=$("#inpEmp");
+    const remember=$("#remember"), btnLogin=$("#btnLogin"), btnDraw=$("#btnDraw");
+    const kpiStatus=$("#kpiStatus"), kpiRound=$("#kpiRound");
+    const resultBox=$("#result"), buddyName=$("#buddyName"), buddyEmp=$("#buddyEmp"), drawHint=$("#drawHint");
+    const toastBox=$("#toast"), userCount=$("#userCount");
+
+    function toast(msg, ok=true){ toastBox.textContent=msg; toastBox.style.background= ok?"#111827":"#b91c1c"; toastBox.classList.add("show"); setTimeout(()=>toastBox.classList.remove("show"), 2000); }
+    function switchTab(t){ if(t==="login"){ viewLogin.classList.remove("hidden"); viewDraw.classList.add("hidden"); tabLogin.classList.add("bg-slate-900","text-white"); tabDraw.classList.remove("bg-slate-900","text-white"); } else { viewLogin.classList.add("hidden"); viewDraw.classList.remove("hidden"); tabDraw.classList.add("bg-slate-900","text-white"); tabLogin.classList.remove("bg-slate-900","text-white"); } }
+    tabLogin.onclick=()=>switchTab("login"); tabDraw.onclick=()=>switchTab("draw");
+
+    function saveLocal(){
+      if (!remember.checked) return;
+      localStorage.setItem("bp_emp", inpEmp.value.trim());
+      localStorage.setItem("bp_sel", selName.value);
+    }
+    function loadLocal(){
+      const emp = localStorage.getItem("bp_emp")||"";
+      if (emp) { inpEmp.value = emp; remember.checked = true; }
+      const sel = localStorage.getItem("bp_sel");
+      if (sel && selName.options.length) selName.value = sel;
+    }
+
+    function fillUsers(users){
+      selName.innerHTML = "";
+      const opt0 = document.createElement("option");
+      opt0.value=""; opt0.textContent="— เลือกชื่อ —";
+      selName.appendChild(opt0);
+
+      users.forEach(u=>{
+        const o = document.createElement("option");
+        o.value = `${u.empId}:::${u.name}`;
+        o.textContent = u.name ? `${u.name} (${u.empId})` : u.empId;
+        selName.appendChild(o);
+      });
+      userCount.textContent = `รายชื่อทั้งหมด: ${users.length} คน`;
+      loadLocal();
+    }
+
+    function parseSelected(){
+      const v = selName.value;
+      if (!v) return null;
+      const [empId, name] = v.split(":::");
+      return { empId, name };
+    }
+
+    function showBuddy(name, emp){
+      buddyName.textContent = name || "—";
+      buddyEmp.textContent  = emp ? `EmpID: ${emp}` : "—";
+      resultBox.classList.remove("hidden");
+    }
+
+    // Events
+    btnLogin.onclick = async ()=>{
+      const selected = parseSelected();
+      if (!selected) { toast("กรุณาเลือกชื่อ", false); return; }
+      const emp = inpEmp.value.trim();
+      if (!emp) { toast("กรอกรหัสพนักงาน", false); return; }
+      if (emp !== selected.empId) { toast("รหัสพนักงานไม่ตรงกับชื่อที่เลือก", false); return; }
+
+      try{
+        const data = await jsonp("login", { name:selected.name, empId:emp });
+        if (data.ok){
+          kpiStatus.textContent = `ล็อกอิน: ${data.user.name} (${data.user.empId})`;
+          kpiRound.textContent  = data.round || "—";
+          saveLocal();
+          switchTab("draw");
+          if (data.assigned){ showBuddy(data.assigned.buddyName, data.assigned.buddyEmpId); drawHint.textContent="คุณจับได้แล้วในรอบนี้"; }
+          else { resultBox.classList.add("hidden"); drawHint.textContent="ยังไม่ได้จับในรอบนี้"; }
+          toast("ล็อกอินสำเร็จ");
+        } else {
+          toast(data.error || "ล็อกอินล้มเหลว", false);
+        }
+      } catch(err){ console.error(err); toast("เชื่อมต่อไม่ได้", false); }
+    };
+
+    btnDraw.onclick = async ()=>{
+      const selected = parseSelected();
+      if (!selected) { toast("กรุณาเลือกชื่อและล็อกอินก่อน", false); return; }
+      btnDraw.disabled = true; btnDraw.textContent = "กำลังจับ…";
+      try{
+        const data = await jsonp("drawBuddy", { empId: selected.empId });
+        if (data.ok && data.assigned){
+          showBuddy(data.assigned.buddyName, data.assigned.buddyEmpId);
+          drawHint.textContent = data.fromCache ? "คุณจับได้แล้วในรอบนี้" : "สุ่มสำเร็จ!";
+          toast(data.fromCache ? "ดึงผลเดิม" : "ได้ Buddy แล้ว 🎉");
+        } else {
+          const msg = data.error==="NO_CANDIDATE_LEFT" ? "ไม่มีผู้ว่างเหลือให้จับแล้ว" : (data.error||"จับไม่สำเร็จ");
+          toast(msg, false);
+        }
+      } catch(err){ console.error(err); toast("เชื่อมต่อไม่ได้", false); }
+      finally { btnDraw.disabled=false; btnDraw.textContent="หา Buddy"; }
+    };
+
+    // Init
+    (async function init(){
+      try{
+        const data = await jsonp("listUsers");
+        if (data.ok){ fillUsers(data.users||[]); }
+        else { fillUsers([]); toast("โหลดรายชื่อไม่สำเร็จ", false); }
+      } catch(e){ console.error(e); toast("เชื่อมต่อไม่ได้", false); }
+    })();
+  </script>
+</body>
+</html>
