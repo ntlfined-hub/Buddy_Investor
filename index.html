@@ -2,94 +2,109 @@
 <html lang="th">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Buddy Picker · Sites/GitHub Ready</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"/>
+  <title>Buddy Picker · Mobile First</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg-from:#f8fafc; --bg-to:#f1f5f9; --card:#fff; --line:#e5e7eb;
-      --text:#0f172a; --muted:#64748b; --primary:#1a1a1a; --accent:#6366f1;
+      --bg-from:#f8fafc; --bg-to:#f1f5f9; --card:#ffffff; --line:#e5e7eb;
+      --text:#0f172a; --muted:#64748b; --accent:#6366f1; --accent-2:#4f46e5;
       --success:#10b981; --error:#ef4444;
     }
-    body{ font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; background:linear-gradient(160deg,var(--bg-from),var(--bg-to)); }
-    .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 30px rgba(2,6,23,.06) }
-    .btn{ border-radius:12px; padding:.9rem 1.1rem; font-weight:600; transition:.2s }
-    .btn-accent{ background:var(--accent); color:#fff } .btn-accent:hover{ filter:brightness(1.05) }
-    .btn:disabled{ opacity:.6; cursor:not-allowed }
-    .input{ border:1px solid var(--line); border-radius:12px; padding:.9rem 1rem; outline:none; width:100% }
-    .input:focus{ box-shadow:0 0 0 4px rgba(99,102,241,.15); border-color:#c7d2fe }
-    .toast{ position:fixed; right:16px; top:16px; background:#111827; color:#fff; padding:.75rem 1rem; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.15); transform:translateY(-10px); opacity:0; transition:.25s }
+    body{ font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; background:linear-gradient(160deg,var(--bg-from),var(--bg-to)); color:var(--text); }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:0 10px 30px rgba(2,6,23,.06) }
+    .btn{ border-radius:14px; padding:.95rem 1.1rem; font-weight:700; transition:transform .08s ease; min-height:48px; }
+    .btn:active{ transform:translateY(1px) }
+    .btn-primary{ background:var(--accent); color:#fff } .btn-primary:hover{ filter:brightness(1.05) }
+    .btn-ghost{ background:#fff; border:1px solid var(--line); color:#0f172a }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none!important }
+    .input{ border:1px solid var(--line); border-radius:14px; padding:0.9rem 1rem; outline:none; width:100%; font-size:16px; /* กัน iOS zoom */ }
+    .input:focus{ box-shadow:0 0 0 5px rgba(99,102,241,.15); border-color:#c7d2fe }
+    .label{ font-size:14px; color:#334155; font-weight:600 }
+    .hint{ font-size:13px; color:#64748b }
+    .toast{ position:fixed; right:16px; top:16px; background:#111827; color:#fff; padding:.8rem 1rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.15); transform:translateY(-10px); opacity:0; transition:.25s; z-index:60 }
     .toast.show{ opacity:1; transform:translateY(0) }
-    .badge{ font-size:.8rem; padding:.25rem .6rem; border-radius:999px; background:#eef2ff; color:#334155; border:1px solid #e5e7eb }
 
-    /* Loading overlay */
-    .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(15,23,42,.35); backdrop-filter:blur(3px); z-index:50 }
+    /* Loading overlay (mobile-friendly) */
+    .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(15,23,42,.35); backdrop-filter:blur(3px); z-index:50; padding:24px }
     .overlay.show{ display:flex }
-    .spinner{ width:42px; height:42px; border:3px solid #e5e7eb; border-top-color:#6366f1; border-radius:50%; animation:spin 1s linear infinite }
+    .spinner{ width:44px; height:44px; border:3px solid #e5e7eb; border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite }
     @keyframes spin{ to{ transform:rotate(360deg) } }
+
+    /* Buddy card (mobile) */
+    .buddy-card{ display:flex; align-items:center; gap:14px; padding:14px; border:1px solid var(--line); border-radius:16px; background:#fff }
+    .avatar{ width:48px; height:48px; border-radius:999px; display:grid; place-items:center; font-weight:800; color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-2)) }
+
+    /* Safe area bottom padding */
+    .safe-bottom{ padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
   </style>
 </head>
 <body class="min-h-screen">
-  <header class="sticky top-0 z-10 backdrop-blur bg-white/70 border-b border-slate-200">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+  <header class="sticky top-0 z-10 backdrop-blur bg-white/80 border-b border-slate-200">
+    <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-center">
       <div class="font-bold text-lg">Buddy Picker</div>
-      <div class="flex items-center gap-2 text-sm text-slate-600">
-        <span id="roundBadge" class="badge">Round: —</span>
-        <span id="lastFetch" class="badge">Last fetch: —</span>
-      </div>
     </div>
   </header>
 
-  <main class="max-w-3xl mx-auto px-4 py-6">
-    <!-- Inputs -->
-    <section class="card p-6">
-      <h1 class="text-xl font-semibold mb-1">หา Buddy</h1>
-      <p class="text-slate-500 mb-5">เลือกชื่อจากรายชื่อ และกรอกรหัสพนักงาน (ใช้เป็นรหัสผ่าน) แล้วกดปุ่ม “หา Buddy” ได้เลย</p>
+  <main class="max-w-md mx-auto px-4 py-4 safe-bottom">
+    <section class="card p-5">
+      <h1 class="text-[20px] font-bold">หา Buddy</h1>
+      <p class="hint mt-1">เลือกชื่อของคุณ กรอกรหัสพนักงาน แล้วกดปุ่มเพื่อสุ่มหาเพื่อน Buddy</p>
 
-      <div class="grid gap-4">
+      <div class="mt-4 grid gap-4">
         <div>
-          <div class="flex items-center justify-between">
-            <label class="block text-sm text-slate-600 mb-1">เลือกชื่อ (Name)</label>
-            <button id="btnReloadUsers" class="text-sm underline decoration-dotted">Reload รายชื่อ</button>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="label">เลือกชื่อ (Name)</label>
+            <button id="btnReloadUsers" class="hint underline">Reload</button>
           </div>
           <select id="selName" class="input"></select>
-          <div class="text-xs text-slate-500 mt-1" id="userCount">—</div>
+          <div class="hint mt-1" id="userCount">—</div>
         </div>
+
         <div>
-          <label class="block text-sm text-slate-600 mb-1">รหัสพนักงาน (EmpID)</label>
+          <label class="label mb-1.5 block">รหัสพนักงาน (EmpID)</label>
           <input id="inpEmp" class="input" placeholder="เช่น 1001" inputmode="numeric" autocomplete="off"/>
         </div>
-      </div>
 
-      <div class="mt-5 flex items-center gap-2">
-        <label class="flex items-center gap-2 text-sm text-slate-600">
-          <input id="remember" type="checkbox" class="w-4 h-4"> จำฉันไว้
+        <label class="flex items-center gap-2 hint select-none">
+          <input id="remember" type="checkbox" class="w-5 h-5 accent-indigo-600"> จำฉันไว้
         </label>
-        <div id="loginStatus" class="text-sm text-slate-600 ml-auto"></div>
       </div>
 
-      <div class="mt-5">
-        <button id="btnFind" class="btn btn-accent w-full">หา Buddy</button>
-        <div id="drawHint" class="text-sm text-slate-600 mt-2"></div>
+      <!-- Primary CTA -->
+      <div class="mt-4">
+        <button id="btnFind" class="btn btn-primary w-full text-[16px]">หา Buddy</button>
+        <div id="drawHint" class="hint mt-2"></div>
       </div>
 
-      <div id="result" class="mt-6 hidden">
-        <div class="text-sm text-slate-500 mb-1">Your Buddy</div>
-        <div class="text-2xl font-bold" id="buddyName">—</div>
-        <div class="text-slate-500" id="buddyEmp">—</div>
-        <div class="mt-4 text-sm text-slate-600">* ถ้าเคยจับได้แล้ว ระบบจะแสดงผลเดิม (ไม่จับใหม่)</div>
+      <!-- Status line (compact for mobile) -->
+      <div id="loginStatus" class="hint mt-3"></div>
+
+      <!-- Result -->
+      <div id="result" class="mt-5 hidden">
+        <div class="hint mb-2">Your Buddy</div>
+        <div class="buddy-card">
+          <div class="avatar" id="buddyAvatar">?</div>
+          <div>
+            <div class="text-[18px] font-extrabold leading-tight" id="buddyName">—</div>
+            <div class="hint leading-tight" id="buddyEmp">—</div>
+          </div>
+        </div>
+        <div class="hint mt-3">* ถ้าเคยจับได้แล้ว ระบบจะแสดงผลเดิม (ไม่จับใหม่)</div>
       </div>
     </section>
+
+    <p class="hint mt-3 text-center" id="roundBadge">Round: — · <span id="lastFetch">Last fetch: —</span></p>
   </main>
 
   <div id="toast" class="toast"></div>
 
   <!-- Loading overlay -->
   <div id="overlay" class="overlay">
-    <div class="card p-5 flex items-center gap-3">
+    <div class="card p-5 flex items-center gap-3 w-full max-w-[320px]">
       <div class="spinner"></div>
-      <div class="text-slate-700 font-medium" id="overlayMsg">กำลังโหลด…</div>
+      <div class="text-slate-700 font-semibold" id="overlayMsg">กำลังโหลด…</div>
     </div>
   </div>
 
@@ -115,7 +130,7 @@
 
           const timer = setTimeout(()=>{ cleanup(); onErr(new Error("JSONP timeout")); }, timeout);
           function cleanup(){ clearTimeout(timer); try{ delete window[callback]; }catch(e){} s.remove(); }
-          function onErr(err){ if (retries>0){ retries-=1; setTimeout(()=>tryOnce(), 400); } else { reject(err); } }
+          function onErr(err){ if (retries>0){ retries-=1; setTimeout(()=>tryOnce(), 350); } else { reject(err); } }
 
           window[callback] = (data)=>{ cleanup(); resolve(data); };
           s.onerror = ()=>{ cleanup(); onErr(new Error("JSONP error")); };
@@ -133,11 +148,14 @@
     const buddyName=$("#buddyName"), buddyEmp=$("#buddyEmp"), resultBox=$("#result"), drawHint=$("#drawHint");
     const roundBadge=$("#roundBadge"), lastFetch=$("#lastFetch");
     const overlay=$("#overlay"), overlayMsg=$("#overlayMsg"), toastBox=$("#toast");
+    const buddyAvatar=$("#buddyAvatar");
 
-    function toast(msg, ok=true){ toastBox.textContent=msg; toastBox.style.background= ok?"#111827":"#ef4444"; toastBox.classList.add("show"); setTimeout(()=>toastBox.classList.remove("show"), 2200); }
+    // Helpers
+    function toast(msg, ok=true){ toastBox.textContent=msg; toastBox.style.background= ok?"#111827":"#ef4444"; toastBox.classList.add("show"); setTimeout(()=>toastBox.classList.remove("show"), 2000); }
     function stamp(){ lastFetch.textContent = "Last fetch: " + new Date().toLocaleString(); }
     function showLoading(msg="กำลังโหลด…"){ overlayMsg.textContent=msg; overlay.classList.add("show"); }
     function hideLoading(){ overlay.classList.remove("show"); }
+    function initials(name=""){ const t=(name||"").trim(); if(!t) return "?"; const p=t.split(/\s+/); return (p[0][0]||"").toUpperCase() + (p[1]?.[0]||"").toUpperCase(); }
 
     function saveLocal(){
       if (!remember.checked) return;
@@ -164,17 +182,18 @@
       users.forEach(u=>{
         const o=document.createElement("option");
         o.value = `${u.empId}:::${u.name}`;
-        o.textContent = u.name ? u.name : u.empId;  // โชว์ชื่อเท่านั้น
+        o.textContent = u.name ? u.name : u.empId; // โชว์ชื่ออย่างเดียว
         selName.appendChild(o);
       });
       userCount.textContent = `รายชื่อทั้งหมด: ${users.length} คน`;
-      if (round) roundBadge.textContent = `Round: ${round}`;
+      if (round) roundBadge.textContent = `Round: ${round} · `;
       loadLocal();
       stamp();
     }
     function showBuddy(name, emp){
       buddyName.textContent = name || "—";
       buddyEmp.textContent  = emp ? `EmpID: ${emp}` : "—";
+      buddyAvatar.textContent = initials(name);
       resultBox.classList.remove("hidden");
     }
 
@@ -191,23 +210,21 @@
     // รวม flow: login -> (show assigned or draw) ในปุ่มเดียว
     btnFind.onclick = async ()=>{
       const selected = parseSelected();
-      if (!selected){ toast("กรุณาเลือกชื่อ", false); return; }
+      if (!selected){ toast("กรุณาเลือกชื่อ", false); selName.focus(); return; }
       const emp = inpEmp.value.trim();
-      if (!emp) { toast("กรอกรหัสพนักงาน", false); return; }
-      if (emp !== selected.empId){ toast("รหัสพนักงานไม่ตรงกับชื่อที่เลือก", false); return; }
+      if (!emp) { toast("กรอกรหัสพนักงาน", false); inpEmp.focus(); return; }
 
       btnFind.disabled = true;
       try{
         showLoading("กำลังตรวจสอบข้อมูล…");
-        // 1) login
         const loginRes = await jsonp("login", { name:selected.name, empId: emp }, {retries:1});
         stamp();
         if (!loginRes.ok){ toast(loginRes.error || "ล็อกอินล้มเหลว", false); return; }
 
-        loginStatus.textContent = `ล็อกอิน: ${loginRes.user.name} (${loginRes.user.empId}) · Round ${loginRes.round||"—"}`;
+        loginStatus.textContent = `ล็อกอิน: ${loginRes.user.name} (${loginRes.user.empId}) · รอบ ${loginRes.round||"—"}`;
         saveLocal();
 
-        // 2) ถ้าเคยมีผลแล้ว แสดงเลย
+        // เคยจับแล้ว → โชว์ผลเดิม
         if (loginRes.assigned){
           hideLoading();
           showBuddy(loginRes.assigned.buddyName, loginRes.assigned.buddyEmpId);
@@ -216,7 +233,7 @@
           return;
         }
 
-        // 3) ยังไม่เคย -> สุ่ม
+        // ยังไม่เคย → สุ่มใหม่
         overlayMsg.textContent = "กำลังสุ่มหา Buddy…";
         const drawRes = await jsonp("drawBuddy", { empId: selected.empId }, {retries:1});
         stamp();
@@ -237,11 +254,11 @@
       }
     };
 
-    // Events
+    // Reload รายชื่อ
     btnReloadUsers.onclick = loadUsers;
 
     // Init
-    loadUsers(); // preload รายชื่อ + อัปเดตรอบ
+    loadUsers();
   </script>
 </body>
 </html>
